@@ -2,6 +2,7 @@ package com.kaiyue.connector;
 
 import com.kaiyue.engine.ServletContextImpl;
 import com.kaiyue.engine.filter.HelloFilter;
+import com.kaiyue.engine.listener.HelloHttpSessionAttributeListener;
 import com.kaiyue.engine.servlet.HelloServlet;
 import com.kaiyue.engine.servlet.IndexServlet;
 import com.kaiyue.engine.servlet.LoginServlet;
@@ -14,6 +15,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.EventListener;
 import java.util.List;
 
 public class HttpConnectoer implements HttpHandler {
@@ -24,6 +26,11 @@ public class HttpConnectoer implements HttpHandler {
         this.servletContext = new ServletContextImpl();
         this.servletContext.initialize(List.of(IndexServlet.class, HelloServlet.class, LoginServlet.class));
         this.servletContext.initFilters(List.of(HelloFilter.class));
+        List<Class<? extends EventListener>> listenerClasses = List.of(HelloHttpSessionAttributeListener.class);
+        for (Class<? extends EventListener> listenerClass : listenerClasses) {
+            this.servletContext.addListener(listenerClass);
+        }
+
     }
 
     @Override

@@ -2,34 +2,50 @@ package com.kaiyue.engine;
 
 import com.kaiyue.engine.mapping.FilterMapping;
 import com.kaiyue.engine.mapping.ServletMapping;
-import com.kaiyue.engine.session.SessionManager;
 import com.kaiyue.utils.AnnoUtils;
 
 import javax.servlet.*;
 import javax.servlet.annotation.WebFilter;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.descriptor.JspConfigDescriptor;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.*;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.*;
+import com.kaiyue.engine.support.Attributes;
+import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
 public class ServletContextImpl implements ServletContext {
+    //listener
+    //监听servletContextListener的创建和销毁
+    private List<ServletContextListener> servletContextListeners = null;
+    //监听servletContext的属性
+    private List<ServletContextAttributeListener> servletContextAttributeListeners = null;
+    //监听servletRequest的创建和销毁
+    private List<ServletRequestListener> servletRequestListeners = null;
+    //监听servletRequest的属性
+    private List<ServletRequestAttributeListener> servletRequestAttributeListeners = null;
+    //监听httpSession的属性
+    private List<HttpSessionAttributeListener> httpSessionAttributeListeners = null;
+    //监听httpSession的创建和销毁
+    private List<HttpSessionListener> httpSessionListeners = null;
+
     // Servlet注册表: 这是注册配置
     Map<String, ServletRegistrationImpl> servletRegistrations = new HashMap<>();
     // Servlet名称到Servlet的映射:
     Map<String, Servlet> nameToServlets = new HashMap<>();
     // Servlet映射:
     List<ServletMapping> servletMappings = new ArrayList<>();
+
     // Filter注册表：这是过滤器的注册配置
     Map<String, FilterRegistrationImpl> filterRegistrations = new HashMap<>();
     // Filter名称到Filter的映射:
     Map<String, Filter> nameToFilters = new HashMap<>();
+
     public SessionManager getSessionManager() {
         return sessionManager;
     }
@@ -39,6 +55,103 @@ public class ServletContextImpl implements ServletContext {
 
     SessionManager sessionManager = new SessionManager(this,1800);
 
+    private static final Logger logger = Logger.getLogger(ServletContextImpl.class.getName());
+    // ServletContext属性存储
+    private Attributes attributes = new Attributes();
+    @Override
+    public void setAttribute(String name, Object value) {
+        if (value == null) {
+            removeAttribute(name);
+        } else {
+            Object old = this.attributes.setAttribute(name, value);
+            if (old == null) {
+                // 触发attributeAdded:
+                this.invokeServletContextAttributeAdded(name, value);
+            } else {
+                // 触发attributeReplaced:
+                this.invokeServletContextAttributeReplaced(name, value);
+            }
+        }
+    }
+
+
+
+    // HttpSession属性监听器的中间人方法
+    public void invokeHttpSessionAttributeAdded(HttpSession session, String name, Object value) {
+        logger.info("invoke HttpSessionAttributeAdded: " + name + " = " + value);
+        if (this.httpSessionAttributeListeners != null) {
+            var event = new HttpSessionBindingEvent(session, name, value);
+            for (var listener : this.httpSessionAttributeListeners) {
+                listener.attributeAdded(event);
+            }
+        }
+    }
+
+    void invokeHttpSessionAttributeRemoved(HttpSession session, String name, Object value) {
+        logger.info("invoke HttpSessionAttributeRemoved: " + name + " = " + value);
+        if (this.httpSessionAttributeListeners != null) {
+            var event = new HttpSessionBindingEvent(session, name, value);
+            for (var listener : this.httpSessionAttributeListeners) {
+                listener.attributeRemoved(event);
+            }
+        }
+    }
+
+    public void invokeHttpSessionAttributeReplaced(HttpSession session, String name, Object value) {
+        logger.info("invoke HttpSessionAttributeReplaced: " + name + " = " + value);
+        if (this.httpSessionAttributeListeners != null) {
+            var event = new HttpSessionBindingEvent(session, name, value);
+            for (var listener : this.httpSessionAttributeListeners) {
+                listener.attributeReplaced(event);
+            }
+        }
+    }
+
+
+    @Override
+    public void removeAttribute(String name) {
+        Object old = this.attributes.removeAttribute(name);
+        // 触发attributeRemoved:
+        this.invokeServletContextAttributeRemoved(name, old);
+    }
+
+
+    // servletContext参数监听器
+    // 这三个方法扮演的中间人，实现监听器与底层动作的解耦
+    void invokeServletContextAttributeAdded(String name, Object value) {
+        logger.info("invoke ServletContextAttributeAdded: " + name + " = " + value);
+        if (this.servletContextAttributeListeners != null) {
+            var event = new ServletContextAttributeEvent(this, name, value);
+            for (var listener : this.servletContextAttributeListeners) {
+                listener.attributeAdded(event);
+            }
+        }
+    }
+    void invokeServletContextAttributeRemoved(String name, Object value) {
+        // 首先打日志
+        logger.info("invoke ServletContextAttributeRemoved: " + name + " = " + value);
+        // 要确保是有监听器监听这个的，才执行下一步方法
+        if (this.servletContextAttributeListeners != null) {
+            // 创建事件包装类
+            var event = new ServletContextAttributeEvent(this, name, value);
+            // 通知每一个这个类型的监听器
+            for (var listener : this.servletContextAttributeListeners) {
+                listener.attributeRemoved(event);
+            }
+        }
+    }
+    void invokeServletContextAttributeReplaced(String name, Object value) {
+        logger.info("invoke ServletContextAttributeReplaced: " + name + " = " + value);
+        if (this.servletContextAttributeListeners != null) {
+            var event = new ServletContextAttributeEvent(this, name, value);
+            for (var listener : this.servletContextAttributeListeners) {
+                listener.attributeReplaced(event);
+            }
+        }
+    }
+
+
+    // 初始化过滤器
     public void initFilters(List<Class<?>> filterClasses) throws ServletException {
         for (Class<?> c : filterClasses) {
             // 获取@WebFilter注解:
@@ -325,15 +438,6 @@ public class ServletContextImpl implements ServletContext {
         return null;
     }
 
-    @Override
-    public void setAttribute(String name, Object object) {
-
-    }
-
-    @Override
-    public void removeAttribute(String name) {
-
-    }
 
     @Override
     public String getServletContextName() {
@@ -461,17 +565,22 @@ public class ServletContextImpl implements ServletContext {
 
     @Override
     public void addListener(String className) {
-
+        try {
+            addListener((Class<? extends EventListener>) Class.forName(className));
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
-    public <T extends EventListener> void addListener(T t) {
-
-    }
-
-    @Override
-    public void addListener(Class<? extends EventListener> listenerClass) {
-
+    public void addListener(Class<? extends EventListener> clazz) {
+        try {
+            addListener(clazz.newInstance());
+        } catch (InstantiationException e) {
+            throw new RuntimeException(e);
+        } catch (IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
@@ -528,4 +637,43 @@ public class ServletContextImpl implements ServletContext {
     public void setResponseCharacterEncoding(String encoding) {
 
     }
+
+    @Override
+    public <T extends EventListener> void addListener(T t) {
+        // 根据Listener类型放入不同的List:
+        if (t instanceof ServletContextListener) {
+            if (this.servletContextListeners == null) {
+                this.servletContextListeners = new ArrayList<>();
+            }
+            this.servletContextListeners.add((ServletContextListener) t);
+        } else if (t instanceof ServletContextAttributeListener) {
+            if (this.servletContextAttributeListeners == null) {
+                this.servletContextAttributeListeners = new ArrayList<>();
+            }
+            this.servletContextAttributeListeners.add((ServletContextAttributeListener) t);
+        } else if (t instanceof ServletRequestListener) {
+            if (this.servletRequestListeners == null) {
+                this.servletRequestListeners = new ArrayList<>();
+            }
+            this.servletRequestListeners.add((ServletRequestListener) t);
+        } else if (t instanceof ServletRequestAttributeListener) {
+            if (this.servletRequestAttributeListeners == null) {
+                this.servletRequestAttributeListeners = new ArrayList<>();
+            }
+            this.servletRequestAttributeListeners.add((ServletRequestAttributeListener) t);
+        } else if (t instanceof HttpSessionAttributeListener) {
+            if (this.httpSessionAttributeListeners == null) {
+                this.httpSessionAttributeListeners = new ArrayList<>();
+            }
+            this.httpSessionAttributeListeners.add((HttpSessionAttributeListener) t);
+        } else if (t instanceof HttpSessionListener) {
+            if (this.httpSessionListeners == null) {
+                this.httpSessionListeners = new ArrayList<>();
+            }
+            this.httpSessionListeners.add((HttpSessionListener) t);
+        } else {
+            throw new IllegalArgumentException("Unsupported listener: " + t.getClass().getName());
+        }
+    }
 }
+

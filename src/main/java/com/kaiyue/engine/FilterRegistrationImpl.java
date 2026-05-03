@@ -75,18 +75,15 @@ public class FilterRegistrationImpl implements FilterRegistration.Dynamic {
     public String getInitParameter(String name) {
         return this.initParameters.getInitParameter(name);
     }
-
     @Override
     public Set<String> setInitParameters(Map<String, String> initParameters) {
         checkNotInitialized("setInitParameter");
         return this.initParameters.setInitParameters(initParameters);
     }
-
     @Override
     public Map<String, String> getInitParameters() {
         return this.initParameters.getInitParameters();
     }
-
     @Override
     public void setAsyncSupported(boolean isAsyncSupported) {
         checkNotInitialized("setInitParameter");
@@ -94,12 +91,10 @@ public class FilterRegistrationImpl implements FilterRegistration.Dynamic {
             throw new UnsupportedOperationException("Async is not supported.");
         }
     }
-
     @Override
     public void addMappingForServletNames(EnumSet<DispatcherType> dispatcherTypes, boolean isMatchAfter, String... servletNames) {
         throw new UnsupportedOperationException("addMappingForServletNames");
     }
-
     @Override
     public void addMappingForUrlPatterns(EnumSet<DispatcherType> dispatcherTypes, boolean isMatchAfter, String... urlPatterns) {
         checkNotInitialized("addMappingForUrlPatterns");
@@ -113,7 +108,6 @@ public class FilterRegistrationImpl implements FilterRegistration.Dynamic {
             this.urlPatterns.add(urlPattern);
         }
     }
-
     @Override
     public Collection<String> getServletNameMappings() {
         return List.of();

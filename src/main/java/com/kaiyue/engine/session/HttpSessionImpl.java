@@ -130,7 +130,14 @@ public class HttpSessionImpl implements HttpSession {
         if (value == null) {
             removeAttribute(name);
         } else {
-            attributes.put(name, value);
+            Object old = attributes.put(name, value);
+            if (old == null) {
+                // 新增属性，触发 attributeAdded
+                servletContext.invokeHttpSessionAttributeAdded(this, name, value);
+            } else {
+                // 替换属性，触发 attributeReplaced
+                servletContext.invokeHttpSessionAttributeReplaced(this, name, old);
+            }
         }
     }
 

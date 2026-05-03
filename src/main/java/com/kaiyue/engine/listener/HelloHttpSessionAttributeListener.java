@@ -1,0 +1,30 @@
+package com.kaiyue.engine.listener;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.servlet.annotation.WebListener;
+import javax.servlet.http.HttpSessionAttributeListener;
+import javax.servlet.http.HttpSessionBindingEvent;
+
+@WebListener
+public class HelloHttpSessionAttributeListener implements HttpSessionAttributeListener {
+
+    final Logger logger = LoggerFactory.getLogger(getClass());
+
+    @Override
+    public void attributeAdded(HttpSessionBindingEvent event) {
+        System.out.println("--------------------------------------测试成功---------------------------------------------");
+        logger.info(">>> HttpSession attribute added: {} = {}", event.getName(), event.getValue());
+    }
+
+    @Override
+    public void attributeRemoved(HttpSessionBindingEvent event) {
+        logger.info(">>> HttpSession attribute removed: {} = {}", event.getName(), event.getValue());
+    }
+
+    @Override
+    public void attributeReplaced(HttpSessionBindingEvent event) {
+        logger.info(">>> HttpSession attribute replaced: {} = {}", event.getName(), event.getValue());
+    }
+}
