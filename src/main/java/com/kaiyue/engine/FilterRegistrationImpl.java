@@ -77,7 +77,7 @@ public class FilterRegistrationImpl implements FilterRegistration.Dynamic {
     }
     @Override
     public Set<String> setInitParameters(Map<String, String> initParameters) {
-        checkNotInitialized("setInitParameter");
+        checkNotInitialized("setInitParameters");
         return this.initParameters.setInitParameters(initParameters);
     }
     @Override
@@ -86,7 +86,7 @@ public class FilterRegistrationImpl implements FilterRegistration.Dynamic {
     }
     @Override
     public void setAsyncSupported(boolean isAsyncSupported) {
-        checkNotInitialized("setInitParameter");
+        checkNotInitialized("setAsyncSupported");
         if (isAsyncSupported) {
             throw new UnsupportedOperationException("Async is not supported.");
         }

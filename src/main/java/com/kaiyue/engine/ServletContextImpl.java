@@ -87,7 +87,7 @@ public class ServletContextImpl implements ServletContext {
         }
     }
 
-    void invokeHttpSessionAttributeRemoved(HttpSession session, String name, Object value) {
+    public void invokeHttpSessionAttributeRemoved(HttpSession session, String name, Object value) {
         logger.info("invoke HttpSessionAttributeRemoved: " + name + " = " + value);
         if (this.httpSessionAttributeListeners != null) {
             var event = new HttpSessionBindingEvent(session, name, value);
@@ -146,6 +146,95 @@ public class ServletContextImpl implements ServletContext {
             var event = new ServletContextAttributeEvent(this, name, value);
             for (var listener : this.servletContextAttributeListeners) {
                 listener.attributeReplaced(event);
+            }
+        }
+    }
+
+    // ServletRequest 生命周期监听器
+    public void invokeServletRequestInitialized(HttpServletRequest request) {
+        logger.info("invoke ServletRequestInitialized: " + request.getRequestURI());
+        if (this.servletRequestListeners != null) {
+            var event = new ServletRequestEvent(this, request);
+            for (var listener : this.servletRequestListeners) {
+                listener.requestInitialized(event);
+            }
+        }
+    }
+    public void invokeServletRequestDestroyed(HttpServletRequest request) {
+        logger.info("invoke ServletRequestDestroyed: " + request.getRequestURI());
+        if (this.servletRequestListeners != null) {
+            var event = new ServletRequestEvent(this, request);
+            for (var listener : this.servletRequestListeners) {
+                listener.requestDestroyed(event);
+            }
+        }
+    }
+
+    // ServletRequestAttribute 监听器
+    public void invokeServletRequestAttributeAdded(HttpServletRequest request, String name, Object value) {
+        logger.info("invoke ServletRequestAttributeAdded: " + name + " = " + value);
+        if (this.servletRequestAttributeListeners != null) {
+            var event = new ServletRequestAttributeEvent(this, request, name, value);
+            for (var listener : this.servletRequestAttributeListeners) {
+                listener.attributeAdded(event);
+            }
+        }
+    }
+    public void invokeServletRequestAttributeRemoved(HttpServletRequest request, String name, Object value) {
+        logger.info("invoke ServletRequestAttributeRemoved: " + name + " = " + value);
+        if (this.servletRequestAttributeListeners != null) {
+            var event = new ServletRequestAttributeEvent(this, request, name, value);
+            for (var listener : this.servletRequestAttributeListeners) {
+                listener.attributeRemoved(event);
+            }
+        }
+    }
+    public void invokeServletRequestAttributeReplaced(HttpServletRequest request, String name, Object value) {
+        logger.info("invoke ServletRequestAttributeReplaced: " + name + " = " + value);
+        if (this.servletRequestAttributeListeners != null) {
+            var event = new ServletRequestAttributeEvent(this, request, name, value);
+            for (var listener : this.servletRequestAttributeListeners) {
+                listener.attributeReplaced(event);
+            }
+        }
+    }
+
+    // HttpSession 生命周期监听器
+    void invokeHttpSessionCreated(HttpSession session) {
+        logger.info("invoke HttpSessionCreated: " + session.getId());
+        if (this.httpSessionListeners != null) {
+            var event = new HttpSessionEvent(session);
+            for (var listener : this.httpSessionListeners) {
+                listener.sessionCreated(event);
+            }
+        }
+    }
+    public void invokeHttpSessionDestroyed(HttpSession session) {
+        logger.info("invoke HttpSessionDestroyed: " + session.getId());
+        if (this.httpSessionListeners != null) {
+            var event = new HttpSessionEvent(session);
+            for (var listener : this.httpSessionListeners) {
+                listener.sessionDestroyed(event);
+            }
+        }
+    }
+
+    // ServletContext 生命周期监听器
+    public void invokeServletContextInitialized() {
+        logger.info("invoke ServletContextInitialized");
+        if (this.servletContextListeners != null) {
+            var event = new ServletContextEvent(this);
+            for (var listener : this.servletContextListeners) {
+                listener.contextInitialized(event);
+            }
+        }
+    }
+    public void invokeServletContextDestroyed() {
+        logger.info("invoke ServletContextDestroyed");
+        if (this.servletContextListeners != null) {
+            var event = new ServletContextEvent(this);
+            for (var listener : this.servletContextListeners) {
+                listener.contextDestroyed(event);
             }
         }
     }
@@ -279,39 +368,44 @@ public class ServletContextImpl implements ServletContext {
      * @throws ServletException
      */
     public void process(HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
-        // 请求路径:
-        String path = request.getRequestURI();
-        // 搜索Servlet:
-        Servlet servlet = null;
-        for (ServletMapping mapping : this.servletMappings) {
-            if (mapping.matches(path)) {
-                // 路径匹配:
-                servlet = mapping.servlet;
-                break;
+        // 触发 ServletRequestListener.requestInitialized
+        this.invokeServletRequestInitialized(request);
+        try {
+            // 请求路径:
+            String path = request.getRequestURI();
+            // 搜索Servlet:
+            Servlet servlet = null;
+            for (ServletMapping mapping : this.servletMappings) {
+                if (mapping.matches(path)) {
+                    // 路径匹配:
+                    servlet = mapping.servlet;
+                    break;
+                }
             }
-        }
-        if (servlet == null) {
-            // 未匹配到任何Servlet显示404 Not Found:
-            PrintWriter pw = response.getWriter();
-            pw.write("<h1>404 Not Found</h1><p>No mapping for URL: " + path + "</p>");
-            pw.close();
-            return;
-        }
-        // 查找Filter
-        List<Filter> enabledFilters = new ArrayList<>();
-        for (FilterMapping mapping : this.filterMappings) {
-            if (mapping.matches(path)) {
-                // 添加到列表:
-                enabledFilters.add(mapping.filter);
+            if (servlet == null) {
+                // 未匹配到任何Servlet显示404 Not Found:
+                PrintWriter pw = response.getWriter();
+                pw.write("<h1>404 Not Found</h1><p>No mapping for URL: " + path + "</p>");
+                pw.close();
+                return;
             }
+            // 查找Filter
+            List<Filter> enabledFilters = new ArrayList<>();
+            for (FilterMapping mapping : this.filterMappings) {
+                if (mapping.matches(path)) {
+                    // 添加到列表:
+                    enabledFilters.add(mapping.filter);
+                }
+            }
+            Filter[] filters = enabledFilters.toArray(new Filter[0]);
+            // 构造FilterChain示例
+            FilterChain chain = new FilterChainImpl(filters, servlet);
+            // 调用Filter处理请求:
+            chain.doFilter(request, response);
+        } finally {
+            // 触发 ServletRequestListener.requestDestroyed
+            this.invokeServletRequestDestroyed(request);
         }
-        Filter[] filters = enabledFilters.toArray(new Filter[0]);
-        // 构造FilterChain示例
-        FilterChain chain = new FilterChainImpl(filters, servlet);
-        // 调用Filter处理请求:
-        chain.doFilter(request, response);
-//        // 由Servlet继续处理请求: // 已经包含在FilterChain里面执行
-//        servlet.service(request, response);
     }
     @Override
     public String getContextPath() {
@@ -430,12 +524,12 @@ public class ServletContextImpl implements ServletContext {
 
     @Override
     public Object getAttribute(String name) {
-        return null;
+        return this.attributes.getAttribute(name);
     }
 
     @Override
     public Enumeration<String> getAttributeNames() {
-        return null;
+        return this.attributes.getAttributeNames();
     }
 
 

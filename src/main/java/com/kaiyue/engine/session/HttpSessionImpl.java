@@ -150,7 +150,10 @@ public class HttpSessionImpl implements HttpSession {
     @Override
     public void removeAttribute(String name) {
         checkInvalid();
-        attributes.remove(name);
+        Object old = attributes.remove(name);
+        if (old != null) {
+            servletContext.invokeHttpSessionAttributeRemoved(this, name, old);
+        }
     }
 
     @Override
@@ -165,6 +168,7 @@ public class HttpSessionImpl implements HttpSession {
         this.invalid = true;
         attributes.clear();
         servletContext.getSessionManager().removeSession(sessionId);
+        servletContext.invokeHttpSessionDestroyed(this);
     }
 
     @Override

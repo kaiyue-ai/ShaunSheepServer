@@ -21,7 +21,7 @@ public class UrlUtils {
         for (int i = 0; i < urlPattern.length(); i++) {
             char ch = urlPattern.charAt(i);
             if (ch == '*') {
-                sb.append(".+");
+                sb.append(".*");
             } else if (ch >= 'a' && ch <= 'z' || ch >= 'A' && ch <= 'Z' || ch >= '0' && ch <= '9') {
                 sb.append(ch);
             } else {

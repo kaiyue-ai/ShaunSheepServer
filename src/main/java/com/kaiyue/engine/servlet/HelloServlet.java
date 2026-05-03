@@ -40,7 +40,7 @@ public class HelloServlet extends HttpServlet {
 
         resp.setContentType("text/html;charset=UTF-8");
         PrintWriter out = resp.getWriter();
-        // 获取arrtribute 的值
+        // 获取 Filter 设置的 attribute 值
         String filteredBy = (String) req.getAttribute("filteredBy");
         out.println("<p>Filtered by: " + filteredBy + "</p>");
         out.println("<h1>" + greeting + ", " + name + "!</h1>");

@@ -251,16 +251,12 @@ public class HttpServletResponseImpl implements HttpServletResponse {
             OutputStream lazyOut = new OutputStream() {
                 private OutputStream actual = null;
 
-                // ... existing code ...
                 private OutputStream getActual() throws IOException {
                     if (actual == null) {
                         if (!committed) {
-                            // Deleted:resp.sendResponseHeaders(status, -1);
-                            // 先设置 Content-Type 等头部
                             if (contentType != null) {
                                 setHeader("Content-Type", contentType);
                             }
-                            // 发送响应头，-1 表示使用分块传输
                             resp.sendResponseHeaders(status, 0);
                             committed = true;
                         }
@@ -268,7 +264,6 @@ public class HttpServletResponseImpl implements HttpServletResponse {
                     }
                     return actual;
                 }
-// ... existing code ...
 
                 @Override
                 public void write(int b) throws IOException {

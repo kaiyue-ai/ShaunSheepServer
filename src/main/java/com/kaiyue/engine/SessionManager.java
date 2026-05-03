@@ -52,6 +52,7 @@ public class SessionManager implements Runnable{
     public HttpSession createSession() {
         HttpSessionImpl session = new HttpSessionImpl(servletContext, inactiveInterval);
         sessions.put(session.getId(), session);
+        servletContext.invokeHttpSessionCreated(session);
         return session;
     }
 

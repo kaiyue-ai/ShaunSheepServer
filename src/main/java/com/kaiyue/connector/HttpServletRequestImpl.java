@@ -476,12 +476,24 @@ public class HttpServletRequestImpl implements HttpServletRequest {
 
     @Override
     public void setAttribute(String name, Object o) {
-        attributes.put(name, o);
+        Object old = attributes.put(name, o);
+        if (old == null) {
+            if (this.servletContext != null) {
+                servletContext.invokeServletRequestAttributeAdded(this, name, o);
+            }
+        } else {
+            if (this.servletContext != null) {
+                servletContext.invokeServletRequestAttributeReplaced(this, name, o);
+            }
+        }
     }
 
     @Override
     public void removeAttribute(String name) {
-        attributes.remove(name);
+        Object old = attributes.remove(name);
+        if (old != null && this.servletContext != null) {
+            servletContext.invokeServletRequestAttributeRemoved(this, name, old);
+        }
     }
 
     @Override
@@ -566,7 +578,7 @@ public class HttpServletRequestImpl implements HttpServletRequest {
 
     @Override
     public ServletContext getServletContext() {
-        return null;
+        return this.servletContext;
     }
 
     @Override

@@ -14,7 +14,6 @@ public class HelloHttpSessionAttributeListener implements HttpSessionAttributeLi
 
     @Override
     public void attributeAdded(HttpSessionBindingEvent event) {
-        System.out.println("--------------------------------------测试成功---------------------------------------------");
         logger.info(">>> HttpSession attribute added: {} = {}", event.getName(), event.getValue());
     }
 
